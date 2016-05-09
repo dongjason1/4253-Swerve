@@ -57,7 +57,7 @@ public class Swerve {
 
 	public void encodersUpdate() {//gets all the encoder values and maps them from 0-360
 		for (int i = 0; i < 4; i++) {
-			encodValues[i] = turn[i].getEncPosition() * 0.6f;
+			encodValues[i] = turn[i].getEncPosition() * 0.6f;//this ratio needs to be figured out
 		}
 		for (int i = 0; i < 4; i++) {
 			while (encodValues[i] > 360)
@@ -177,12 +177,7 @@ public class Swerve {
 	}
 	
 	void gyroUpdate(){//vex gyros are stupid. NavX won't need this
-		if(ahrs1.getAngle()<0){
-			angle = 360+(ahrs1.getAngle()/10);
-		}
-		else {
-			angle = ahrs1.getAngle()/10;
-		}
+		angle = ahrs1.getAngle();
 	}
 	
 	void swerve(){
