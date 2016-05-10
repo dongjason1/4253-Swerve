@@ -21,18 +21,13 @@ public class Swerve {
 	private double rotation = 0;//this is the rotation value decided by the joysticks
 	private boolean notMoving;//this is an override so that when the joysticks are close to 0 they don't move
 	private boolean fieldOrientate;//decides if field oriented or not
-
+	private final static int encoderTicksPerRevolution=256;
+	
 	public Swerve(CANTalon wheelsDirection0, CANTalon wheelsDirection1, CANTalon wheelsDirection2, CANTalon wheelsDirection3,
 			CANTalon wheelsSpeed0, CANTalon wheelsSpeed1, CANTalon wheelsSpeed2, CANTalon wheelsSpeed3,Joystick joy, AHRS ahrs) {
 
-		turn[0] = wheelsDirection0;
-		turn[1] = wheelsDirection1;
-		turn[2] = wheelsDirection2;
-		turn[3] = wheelsDirection3;
-		drive[0] = wheelsSpeed0;
-		drive[1] = wheelsSpeed1;
-		drive[2] = wheelsSpeed2;
-		drive[3] = wheelsSpeed3;
+		turn[0] = wheelsDirection0;turn[1] = wheelsDirection1;turn[2] = wheelsDirection2;turn[3] = wheelsDirection3;
+		drive[0] = wheelsSpeed0;drive[1] = wheelsSpeed1;drive[2] = wheelsSpeed2;drive[3] = wheelsSpeed3;
 		stick = joy;
 		ahrs = ahrs1;
 
@@ -54,7 +49,7 @@ public class Swerve {
 
 	public void encodersUpdate() {//gets all the encoder values and maps them from 0-360
 		for (int i = 0; i < 4; i++) {
-			encodValues[i] = turn[i].getEncPosition() * 0.6f;//this ratio needs to be figured out
+			encodValues[i] = turn[i].getEncPosition() * (360/encoderTicksPerRevolution);
 		}
 		for (int i = 0; i < 4; i++) {
 			while (encodValues[i] > 360)
@@ -95,18 +90,11 @@ public class Swerve {
 		double d = yJoy + rotation * 0.707;
 		double x = 0;
 
-		if (wheelNum == 1)
-			x = Math.toDegrees(Math.atan2(b, c));
-
-		if (wheelNum == 2)
-			x = Math.toDegrees(Math.atan2(b, d));
-
-		if (wheelNum == 3)
-			x = Math.toDegrees(Math.atan2(a, d));
-
-		if (wheelNum == 4)
-			x = Math.toDegrees(Math.atan2(a, c));
-
+		if (wheelNum == 1)x = Math.toDegrees(Math.atan2(b, c));
+		if (wheelNum == 2)x = Math.toDegrees(Math.atan2(b, d));
+		if (wheelNum == 3)x = Math.toDegrees(Math.atan2(a, d));
+		if (wheelNum == 4)x = Math.toDegrees(Math.atan2(a, c));
+		
 		if (reversed[wheelNum - 1])//reverses direction if 180 problem is called
 			x += 180;
 
@@ -181,8 +169,8 @@ public class Swerve {
 
 		drive[0].set(calculateSwerveSpeed(2));
 		drive[1].set(calculateSwerveSpeed(3));
-		drive[3].set(calculateSwerveSpeed(1));
-		drive[4].set(calculateSwerveSpeed(4));
+		drive[2].set(calculateSwerveSpeed(1));
+		drive[3].set(calculateSwerveSpeed(4));
 	}
 	void swerveControl(){
 		gyroUpdate();
