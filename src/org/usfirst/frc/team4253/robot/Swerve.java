@@ -38,19 +38,16 @@ public class Swerve {
 
 		for (int i = 0; i < 4; i++) {
 			drive[i].changeControlMode(TalonControlMode.PercentVbus);
-
 			drive[i].setVoltageRampRate(40);
 			drive[i].enableBrakeMode(true);
+			drive[i].reverseOutput(false);//might need to reverse some of them depending on how they get set up
 
-			drive[i].reverseOutput(false);
-
+			
 			turn[i].changeControlMode(TalonControlMode.PercentVbus);
 			turn[i].setFeedbackDevice(FeedbackDevice.QuadEncoder);
-
-			turn[i].setVoltageRampRate(40);
 			turn[i].enableBrakeMode(true);
 
-			turn[i].reverseOutput(false);
+			turn[i].reverseOutput(false);//also might need to be reversed 
 			turn[i].reverseSensor(false);
 		}
 	}
