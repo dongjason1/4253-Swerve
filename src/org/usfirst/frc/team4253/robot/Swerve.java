@@ -12,7 +12,7 @@ public class Swerve {
 	private CANTalon turn[] = new CANTalon[4];
 	private Joystick stick;
 	private AHRS ahrs1;
-
+	
 	private static float[] encodValues;//these are the encoder values for the wheel's pivot direction
 	private static boolean[] reversed;//these determine if each wheel needs to be reveresed. used to solve the 180 problem
 	private double angle = 0;//gyro value
@@ -21,18 +21,18 @@ public class Swerve {
 	private double rotation = 0;//this is the rotation value decided by the joysticks
 	private boolean notMoving;//this is an override so that when the joysticks are close to 0 they don't move
 	private boolean fieldOrientate;//decides if field oriented or not
-
+	
+	private final static int encoderTicksPerRevolution = 256;
+	private final static double F = 0.027f;//change these
+	private final static double P = 0.017f;
+	private final static double I = 0.000001f;
+	private final static double D = 1.0f;
+	
 	public Swerve(CANTalon wheelsDirection0, CANTalon wheelsDirection1, CANTalon wheelsDirection2, CANTalon wheelsDirection3,
 			CANTalon wheelsSpeed0, CANTalon wheelsSpeed1, CANTalon wheelsSpeed2, CANTalon wheelsSpeed3,Joystick joy, AHRS ahrs) {
 
-		turn[0] = wheelsDirection0;
-		turn[1] = wheelsDirection1;
-		turn[2] = wheelsDirection2;
-		turn[3] = wheelsDirection3;
-		drive[0] = wheelsSpeed0;
-		drive[1] = wheelsSpeed1;
-		drive[2] = wheelsSpeed2;
-		drive[3] = wheelsSpeed3;
+		turn[0] = wheelsDirection0;turn[1] = wheelsDirection1;turn[2] = wheelsDirection2;turn[3] = wheelsDirection3;
+		drive[0] = wheelsSpeed0;drive[1] = wheelsSpeed1;drive[2] = wheelsSpeed2;drive[3] = wheelsSpeed3;
 		stick = joy;
 		ahrs = ahrs1;
 
@@ -43,24 +43,21 @@ public class Swerve {
 			drive[i].reverseOutput(false);//might need to reverse some of them depending on how they get set up
 
 			
-			turn[i].changeControlMode(TalonControlMode.PercentVbus);
+			turn[i].changeControlMode(TalonControlMode.Position);
 			turn[i].setFeedbackDevice(FeedbackDevice.QuadEncoder);
 			turn[i].enableBrakeMode(true);
-
 			turn[i].reverseOutput(false);//also might need to be reversed 
 			turn[i].reverseSensor(false);
+			turn[i].setPID(P, I, D, F, 0, 12, 0);
+			turn[i].configNominalOutputVoltage(+0.0f, -0.0f);
+			turn[i].configPeakOutputVoltage(+12.0f, -12.0f);
+			
 		}
 	}
 
 	public void encodersUpdate() {//gets all the encoder values and maps them from 0-360
 		for (int i = 0; i < 4; i++) {
-			encodValues[i] = turn[i].getEncPosition() * 0.6f;//this ratio needs to be figured out
-		}
-		for (int i = 0; i < 4; i++) {
-			while (encodValues[i] > 360)
-				encodValues[i] -= 360;
-			while (encodValues[i] < 0)
-				encodValues[i] += 360;
+			encodValues[i] = turn[i].getEncPosition();//this ratio needs to be figured out
 		}
 	}
 
@@ -92,20 +89,13 @@ public class Swerve {
 		double a = xJoy-rotation*0.707;//math stuff. check the chief delphi paper for more info
 		double b = xJoy+rotation*0.707;//it's just adding angular velocity and direction velocity
 		double c = yJoy-rotation*0.707;//take it as a black box if you haven't studies physics yet
-		double d = yJoy + rotation * 0.707;
+		double d = yJoy + rotation * 0.707;//returns an angle from 0-360
 		double x = 0;
 
-		if (wheelNum == 1)
-			x = Math.toDegrees(Math.atan2(b, c));
-
-		if (wheelNum == 2)
-			x = Math.toDegrees(Math.atan2(b, d));
-
-		if (wheelNum == 3)
-			x = Math.toDegrees(Math.atan2(a, d));
-
-		if (wheelNum == 4)
-			x = Math.toDegrees(Math.atan2(a, c));
+		if (wheelNum == 1) x = Math.toDegrees(Math.atan2(b, c));
+		if (wheelNum == 2) x = Math.toDegrees(Math.atan2(b, d));
+		if (wheelNum == 3) x = Math.toDegrees(Math.atan2(a, d));
+		if (wheelNum == 4) x = Math.toDegrees(Math.atan2(a, c));
 
 		if (reversed[wheelNum - 1])//reverses direction if 180 problem is called
 			x += 180;
@@ -115,33 +105,29 @@ public class Swerve {
 
 		return x;
 	}
-	
-	public double calculateDirectionSpeed(double encoder, double direction, int wheelNum){
-		double wheelsDirectionSpeed;
-		if(direction>encoder){//if the target direction is greater than the current direction
-			wheelsDirectionSpeed=(direction-encoder);//pivot towards the target direction at a scaling speed
-			if(wheelsDirectionSpeed>180){//if the difference is greater than 180, it's faster to move in the negative direction
-				//example of this encoder = 0, direction = 270, it's faster to move negative than positive
-				wheelsDirectionSpeed-=360;//subtracting 360 properly changes the orientation
-			}
-		}
-		else if(direction<encoder){//if the target direction is less than the current direction
-			wheelsDirectionSpeed=-(encoder-direction);//same solution for the other one just in the other direction
-			if(wheelsDirectionSpeed<-180) wheelsDirectionSpeed+=360;
-		}
-		else wheelsDirectionSpeed=0;
-		if(notMoving)wheelsDirectionSpeed=0;//super override
 
-		if(Math.abs(wheelsDirectionSpeed)>90){//sets the wheel to reversed if the direction is more than 90 degrees away(solves 180)
-			reversed[wheelNum-1]=!reversed[wheelNum-1];
+	public int calculateDirection(double encoder, double direction, int wheelNum){
+		//this will take an angle from 0-360, map it to the encoder ticks per revolution, and find target PID position
+		//also will know if the 180 thing needs to happen
+		//returns an int that is the encoder tick it needs to go to
+		if(notMoving) return (int)encoder;
+		
+		double targetPosition=direction*(encoderTicksPerRevolution/360.0);//maps the 360 value to the number of encoder ticks
+		while(Math.abs(encoder-targetPosition)>(encoderTicksPerRevolution/2.0)){//this will get the position closest to the current encoder value
+			if(encoder>targetPosition)targetPosition+=encoderTicksPerRevolution;
+			else targetPosition-=encoderTicksPerRevolution;
 		}
-		wheelsDirectionSpeed=wheelsDirectionSpeed/360;
-		return wheelsDirectionSpeed;
+		
+		if(Math.abs(encoder-targetPosition)>(encoderTicksPerRevolution/4.0)){//if this is true it needs to be reversed
+			reversed[wheelNum-1]=!reversed[wheelNum-1];
+			return (int)encoder;//return this for this pass so that it doesn't spaz and will properly reverse
+		}
+		return (int)targetPosition;
 	}
 	
 	double calculateSwerveSpeed(int wheelNum){//again this is math for each wheel speed.
 		double a = xJoy-rotation*0.707;//go study physics
-		double b = xJoy+rotation*0.707;
+		double b = xJoy+rotation*0.707;//should return a double from -1.0 to 1.0
 		double c = yJoy-rotation*0.707;
 		double d = yJoy+rotation*0.707;
 		if(wheelNum==1){
@@ -174,15 +160,16 @@ public class Swerve {
 	}
 	
 	void swerve(){
-		turn[0].set(calculateDirectionSpeed(encodValues[0],calculateSwerveDirection(2),2));
-		turn[1].set(calculateDirectionSpeed(encodValues[1],calculateSwerveDirection(3),3));
-		turn[2].set(calculateDirectionSpeed(encodValues[2],calculateSwerveDirection(1),1));
-		turn[3].set(calculateDirectionSpeed(encodValues[3],calculateSwerveDirection(4),4));
+		//wheels 1,2,3,4 go from front right wheel and goes counter clockwise
+		turn[0].set(calculateDirection(encodValues[0],calculateSwerveDirection(2),2));//turn[0] is back right
+		turn[1].set(calculateDirection(encodValues[1],calculateSwerveDirection(3),3));//turn[1] is back left
+		turn[2].set(calculateDirection(encodValues[2],calculateSwerveDirection(1),1));//turn[2] is front right
+		turn[3].set(calculateDirection(encodValues[3],calculateSwerveDirection(4),4));//turn[3] is front left
 
-		drive[0].set(calculateSwerveSpeed(2));
-		drive[1].set(calculateSwerveSpeed(3));
-		drive[3].set(calculateSwerveSpeed(1));
-		drive[4].set(calculateSwerveSpeed(4));
+		drive[0].set(calculateSwerveSpeed(2));//drive[0] is back right
+		drive[1].set(calculateSwerveSpeed(3));//drive[1] is back left
+		drive[2].set(calculateSwerveSpeed(1));//drive[2] is front right
+		drive[3].set(calculateSwerveSpeed(4));//drive[3] is front left
 	}
 	void swerveControl(){
 		gyroUpdate();
