@@ -85,7 +85,7 @@ public class Swerve {
 	}
 
 	void decideIfNotMoving() {
-		if (Math.abs(xJoy) < 5 && Math.abs(yJoy) < 5 && Math.abs(stick.getRawAxis(2)) < 5)
+		if (Math.abs(xJoy) < 0.01 && Math.abs(yJoy) < 0.01 && Math.abs(stick.getRawAxis(2)) < 0.01)
 			notMoving = true;	
 		else
 			notMoving = false;
@@ -120,11 +120,6 @@ public class Swerve {
 	}
 	
 	public double calculateDirectionSpeed(double encoder, double direction, int wheelNum){
-		//this is really really nasty and I kind of hate myself for this
-		//takes current encoder value and compares it with the target direction and decides how fast to pivot each wheel
-		//this is all neccessary because I chose to go from 0-360 for simplicity in my brain
-		//if(betterWayExists) bayntun.findABetterWay(Mike, Tiff)
-		//pleaes bear with me
 		double wheelsDirectionSpeed;
 		if(direction>encoder){//if the target direction is greater than the current direction
 			wheelsDirectionSpeed=(direction-encoder);//pivot towards the target direction at a scaling speed
@@ -143,6 +138,7 @@ public class Swerve {
 		if(Math.abs(wheelsDirectionSpeed)>90){//sets the wheel to reversed if the direction is more than 90 degrees away(solves 180)
 			reversed[wheelNum-1]=!reversed[wheelNum-1];
 		}
+		wheelsDirectionSpeed=wheelsDirectionSpeed/360;
 		return wheelsDirectionSpeed;
 	}
 	
