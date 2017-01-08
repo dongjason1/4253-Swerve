@@ -1,9 +1,11 @@
 package org.usfirst.frc.team4253.robot;
 
-import edu.wpi.first.wpilibj.CANTalon;
-import edu.wpi.first.wpilibj.CANTalon.FeedbackDevice;
-import edu.wpi.first.wpilibj.CANTalon.TalonControlMode;
 import edu.wpi.first.wpilibj.Joystick;
+import com.ctre.CANTalon;
+import com.ctre.CANTalon.TalonControlMode;
+import com.ctre.CANTalon.FeedbackDevice;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
 import com.kauailabs.navx.frc.AHRS;
 
 
@@ -13,8 +15,8 @@ public class Swerve {
 	private Joystick stick;
 	private AHRS ahrs1;
 	
-	private static float[] encodValues;//these are the encoder values for the wheel's pivot direction
-	private static boolean[] reversed;//these determine if each wheel needs to be reveresed. used to solve the 180 problem
+	private static float[] encodValues = new float[4];//these are the encoder values for the wheel's pivot direction
+	private static boolean[] reversed =  new boolean[4];//these determine if each wheel needs to be reveresed. used to solve the 180 problem
 	private double angle = 0;//gyro value
 	private double xJoy = 0;//this is the strafe value as decided by the joysticks
 	private double yJoy = 0;//this is the move forwards value as decided by the joysticks
@@ -23,8 +25,8 @@ public class Swerve {
 	private boolean fieldOrientate;//decides if field oriented or not
 	
 	private final static int encoderTicksPerRevolution = 256;
-	private final static double F = 0.027f;//change these
-	private final static double P = 0.017f;
+	private final static double F = 0.5f;//change these
+	private final static double P = 1f;
 	private final static double I = 0.000001f;
 	private final static double D = 1.0f;
 	
@@ -34,7 +36,7 @@ public class Swerve {
 		turn[0] = wheelsDirection0;turn[1] = wheelsDirection1;turn[2] = wheelsDirection2;turn[3] = wheelsDirection3;
 		drive[0] = wheelsSpeed0;drive[1] = wheelsSpeed1;drive[2] = wheelsSpeed2;drive[3] = wheelsSpeed3;
 		stick = joy;
-		ahrs = ahrs1;
+		ahrs1 = ahrs;
 
 		for (int i = 0; i < 4; i++) {
 			drive[i].changeControlMode(TalonControlMode.PercentVbus);
@@ -44,7 +46,7 @@ public class Swerve {
 
 			
 			turn[i].changeControlMode(TalonControlMode.Position);
-			turn[i].setFeedbackDevice(FeedbackDevice.QuadEncoder);
+			turn[i].setFeedbackDevice(FeedbackDevice.AnalogEncoder);
 			turn[i].enableBrakeMode(true);
 			turn[i].reverseOutput(false);//also might need to be reversed 
 			turn[i].reverseSensor(false);
@@ -57,7 +59,7 @@ public class Swerve {
 
 	public void encodersUpdate() {//gets all the encoder values and maps them from 0-360
 		for (int i = 0; i < 4; i++) {
-			encodValues[i] = turn[i].getEncPosition();//this ratio needs to be figured out
+			encodValues[i] = ((float)(turn[i].getAnalogInPosition()-20)/2.7777f);//this ratio needs to be figured out
 		}
 	}
 
@@ -86,9 +88,9 @@ public class Swerve {
 	}
 
 	public double calculateSwerveDirection(int wheelNum) {//wheels 1,2,3,4 go from front right wheel and goes counter clockwise
-		double a = xJoy-rotation*0.707;//math stuff. check the chief delphi paper for more info
-		double b = xJoy+rotation*0.707;//it's just adding angular velocity and direction velocity
-		double c = yJoy-rotation*0.707;//take it as a black box if you haven't studies physics yet
+		double a = xJoy - rotation * 0.707;//math stuff. check the chief delphi paper for more info
+		double b = xJoy + rotation * 0.707;//it's just adding angular velocity and direction velocity
+		double c = yJoy - rotation * 0.707;//take it as a black box if you haven't studies physics yet
 		double d = yJoy + rotation * 0.707;//returns an angle from 0-360
 		double x = 0;
 
@@ -106,11 +108,11 @@ public class Swerve {
 		return x;
 	}
 
-	public int calculateDirection(double encoder, double direction, int wheelNum){
+	public double calculateDirection(double encoder, double direction, int wheelNum){
 		//this will take an angle from 0-360, map it to the encoder ticks per revolution, and find target PID position
 		//also will know if the 180 thing needs to happen
 		//returns an int that is the encoder tick it needs to go to
-		if(notMoving) return (int)encoder;
+		if(notMoving) return encoder;
 		
 		double targetPosition=direction*(encoderTicksPerRevolution/360.0);//maps the 360 value to the number of encoder ticks
 		while(Math.abs(encoder-targetPosition)>(encoderTicksPerRevolution/2.0)){//this will get the position closest to the current encoder value
@@ -120,9 +122,9 @@ public class Swerve {
 		
 		if(Math.abs(encoder-targetPosition)>(encoderTicksPerRevolution/4.0)){//if this is true it needs to be reversed
 			reversed[wheelNum-1]=!reversed[wheelNum-1];
-			return (int)encoder;//return this for this pass so that it doesn't spaz and will properly reverse
+			return encoder;//return this for this pass so that it doesn't spaz and will properly reverse
 		}
-		return (int)targetPosition;
+		return targetPosition;
 	}
 	
 	double calculateSwerveSpeed(int wheelNum){//again this is math for each wheel speed.
@@ -151,7 +153,9 @@ public class Swerve {
 	
 	void resetEncoders(){//self explanatory
 		for (int i = 0; i < 4; i++) {
-			turn[i].setEncPosition(0);
+			turn[i].setAnalogPosition(0);
+			turn[i].setAnalogPosition(0);
+			turn[i].setAnalogPosition(0);
 		}
 	}
 	
@@ -172,6 +176,12 @@ public class Swerve {
 		drive[3].set(calculateSwerveSpeed(4));//drive[3] is front left
 	}
 	void swerveControl(){
+		SmartDashboard.putNumber("Turn 0", calculateDirection(encodValues[0],calculateSwerveDirection(2),2));
+		SmartDashboard.putNumber("Navx", ahrs1.getAngle());
+		SmartDashboard.putNumber("Encoder0", turn[0].getAnalogInRaw());
+		SmartDashboard.putNumber("Encoder1", turn[1].getAnalogInRaw());
+		SmartDashboard.putNumber("Encoder2", turn[2].getAnalogInRaw());
+		SmartDashboard.putNumber("Encoder3", turn[3].getAnalogInRaw());
 		gyroUpdate();
 		encodersUpdate();
 		joystickUpdate();

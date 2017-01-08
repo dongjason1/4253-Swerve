@@ -6,8 +6,9 @@ import edu.wpi.first.wpilibj.SampleRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.Timer;
+import com.ctre.CANTalon.TalonControlMode;
+import com.ctre.CANTalon;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.CANTalon;
 import com.kauailabs.navx.frc.AHRS;
 
 import org.usfirst.frc.team4253.robot.Swerve;
@@ -21,13 +22,17 @@ public class Robot extends SampleRobot {
     public void robotInit() {
     	ahrs = new AHRS(SPI.Port.kMXP);
     	ahrs.reset();
+    	for(int i=0; i<8; i++){
+    		motors[i]= new CANTalon(i);
+    	}
 		swerve = new Swerve(motors[0], motors[1], motors[2], motors[3], motors[4], motors[5], motors[6], motors[7], stick, ahrs);
     }
 
     public void operatorControl() {
     	swerve.resetEncoders();
         while (isOperatorControl() && isEnabled()) {
-        	if(stick.getRawButton(2)) ahrs.reset();
+        	if(stick.getRawButton(1)) ahrs.reset();
+        	if(stick.getRawButton(2)) swerve.resetEncoders();
         	swerve.swerveControl();
             Timer.delay(0.005);		// wait for a motor update time
         }
