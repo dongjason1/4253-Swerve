@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.CANTalon;
+import com.ctre.CANTalon;
 import com.kauailabs.navx.frc.AHRS;
 
 import org.usfirst.frc.team4253.robot.Swerve;

@@ -1,8 +1,8 @@
 package org.usfirst.frc.team4253.robot;
 
-import edu.wpi.first.wpilibj.CANTalon;
-import edu.wpi.first.wpilibj.CANTalon.FeedbackDevice;
-import edu.wpi.first.wpilibj.CANTalon.TalonControlMode;
+import com.ctre.CANTalon;
+import com.ctre.CANTalon.FeedbackDevice;
+import com.ctre.CANTalon.TalonControlMode;
 import edu.wpi.first.wpilibj.Joystick;
 import com.kauailabs.navx.frc.AHRS;
 
@@ -21,7 +21,7 @@ public class Swerve {
 	private double rotation = 0;//this is the rotation value decided by the joysticks
 	private boolean notMoving;//this is an override so that when the joysticks are close to 0 they don't move
 	private boolean fieldOrientate;//decides if field oriented or not
-	private final static int encoderTicksPerRevolution=256;
+	private final static int encoderTicksPerRevolution=1000;
 	
 	public Swerve(CANTalon wheelsDirection0, CANTalon wheelsDirection1, CANTalon wheelsDirection2, CANTalon wheelsDirection3,
 			CANTalon wheelsSpeed0, CANTalon wheelsSpeed1, CANTalon wheelsSpeed2, CANTalon wheelsSpeed3,Joystick joy, AHRS ahrs) {
@@ -39,7 +39,7 @@ public class Swerve {
 
 			
 			turn[i].changeControlMode(TalonControlMode.PercentVbus);
-			turn[i].setFeedbackDevice(FeedbackDevice.QuadEncoder);
+			turn[i].setFeedbackDevice(FeedbackDevice.AnalogEncoder);
 			turn[i].enableBrakeMode(true);
 
 			turn[i].reverseOutput(false);//also might need to be reversed 
@@ -49,13 +49,7 @@ public class Swerve {
 
 	public void encodersUpdate() {//gets all the encoder values and maps them from 0-360
 		for (int i = 0; i < 4; i++) {
-			encodValues[i] = turn[i].getEncPosition() * (360/encoderTicksPerRevolution);
-		}
-		for (int i = 0; i < 4; i++) {
-			while (encodValues[i] > 360)
-				encodValues[i] -= 360;
-			while (encodValues[i] < 0)
-				encodValues[i] += 360;
+			encodValues[i] = (turn[i].getAnalogInRaw()-20) * (360/encoderTicksPerRevolution);
 		}
 	}
 
