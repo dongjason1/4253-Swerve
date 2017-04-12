@@ -19,6 +19,10 @@ public class Robot extends SampleRobot {
     AHRS ahrs;
     
     public void robotInit() {
+        for(int i=0; i<8; i++){
+        	motors[i] = new CANTalon(i);
+        }
+        
     	ahrs = new AHRS(SPI.Port.kMXP);
     	ahrs.reset();
 		swerve = new Swerve(motors[0], motors[1], motors[2], motors[3], motors[4], motors[5], motors[6], motors[7], stick, ahrs);

@@ -4,6 +4,8 @@ import com.ctre.CANTalon;
 import com.ctre.CANTalon.FeedbackDevice;
 import com.ctre.CANTalon.TalonControlMode;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
 import com.kauailabs.navx.frc.AHRS;
 
 
@@ -13,8 +15,8 @@ public class Swerve {
 	private Joystick stick;
 	private AHRS ahrs1;
 
-	private static float[] encodValues;//these are the encoder values for the wheel's pivot direction
-	private static boolean[] reversed;//these determine if each wheel needs to be reveresed. used to solve the 180 problem
+	private static float[] encodValues = new float[4];//these are the encoder values for the wheel's pivot direction
+	private static boolean[] reversed = new boolean[4];//these determine if each wheel needs to be reveresed. used to solve the 180 problem
 	private double angle = 0;//gyro value
 	private double xJoy = 0;//this is the strafe value as decided by the joysticks
 	private double yJoy = 0;//this is the move forwards value as decided by the joysticks
@@ -29,7 +31,7 @@ public class Swerve {
 		turn[0] = wheelsDirection0;turn[1] = wheelsDirection1;turn[2] = wheelsDirection2;turn[3] = wheelsDirection3;
 		drive[0] = wheelsSpeed0;drive[1] = wheelsSpeed1;drive[2] = wheelsSpeed2;drive[3] = wheelsSpeed3;
 		stick = joy;
-		ahrs = ahrs1;
+		ahrs1 = ahrs;
 
 		for (int i = 0; i < 4; i++) {
 			drive[i].changeControlMode(TalonControlMode.PercentVbus);
@@ -45,11 +47,13 @@ public class Swerve {
 			turn[i].reverseOutput(false);//also might need to be reversed 
 			turn[i].reverseSensor(false);
 		}
+		drive[2].setInverted(true);
+		drive[3].setInverted(true);
 	}
 
 	public void encodersUpdate() {//gets all the encoder values and maps them from 0-360
 		for (int i = 0; i < 4; i++) {
-			encodValues[i] = (turn[i].getAnalogInRaw()-20) * (360/encoderTicksPerRevolution);
+			encodValues[i] = (float) ((turn[i].getAnalogInRaw()-20)/2.7777f);
 		}
 	}
 
@@ -166,11 +170,20 @@ public class Swerve {
 		drive[2].set(calculateSwerveSpeed(1));
 		drive[3].set(calculateSwerveSpeed(4));
 	}
+	
+	void updateSmartDashboard(){
+		for(int i = 0; i<4; i++){
+			SmartDashboard.putNumber("Encoder " + i, turn[i].getAnalogInRaw());
+		}
+		SmartDashboard.putNumber("NavX", ahrs1.getAngle());
+	}
+	
 	void swerveControl(){
 		gyroUpdate();
 		encodersUpdate();
 		joystickUpdate();
 		decideIfNotMoving();
+		updateSmartDashboard();
 		swerve();
 	}
 }
