@@ -23,7 +23,7 @@ public class Swerve {
 	private double rotation = 0;//this is the rotation value decided by the joysticks
 	private boolean notMoving;//this is an override so that when the joysticks are close to 0 they don't move
 	private boolean fieldOrientate;//decides if field oriented or not
-	private final static int encoderTicksPerRevolution=1000;
+	private final static double TICKSTODEGREES = 360/1700;
 	
 	public Swerve(CANTalon wheelsDirection0, CANTalon wheelsDirection1, CANTalon wheelsDirection2, CANTalon wheelsDirection3,
 			CANTalon wheelsSpeed0, CANTalon wheelsSpeed1, CANTalon wheelsSpeed2, CANTalon wheelsSpeed3,Joystick joy, AHRS ahrs) {
@@ -41,21 +41,26 @@ public class Swerve {
 
 			
 			turn[i].changeControlMode(TalonControlMode.PercentVbus);
-			turn[i].setFeedbackDevice(FeedbackDevice.AnalogEncoder);
+			turn[i].setFeedbackDevice(FeedbackDevice.QuadEncoder);
 			turn[i].enableBrakeMode(true);
 
 			turn[i].reverseOutput(false);//also might need to be reversed 
-			turn[i].reverseSensor(false);
+			turn[i].reverseSensor(true);
 		}
-		drive[2].setInverted(true);
-		drive[3].setInverted(true);
+		
 	}
 
 	public void encodersUpdate() {//gets all the encoder values and maps them from 0-360
 		for (int i = 0; i < 4; i++) {
-			encodValues[i] = (float) ((turn[i].getAnalogInRaw()-20)/2.7777f);
+			encodValues[i] = (float) (-turn[i].getEncPosition() * TICKSTODEGREES);//this ratio needs to be figured out
 		}
-	}
+		for (int i = 0; i < 4; i++) {
+			while (encodValues[i] > 360)
+				encodValues[i] -= 360;
+			while (encodValues[i] < 0)
+				encodValues[i] += 360;
+		}
+}
 
 	public void joystickUpdate() {
 		if (stick.getRawButton(5))//field oriented decision not on a toggle because i'm lazy
@@ -75,7 +80,7 @@ public class Swerve {
 	}
 
 	void decideIfNotMoving() {
-		if (Math.abs(xJoy) < 0.01 && Math.abs(yJoy) < 0.01 && Math.abs(stick.getRawAxis(2)) < 0.01)
+		if (Math.abs(xJoy) < 0.1 && Math.abs(yJoy) < 0.1 && Math.abs(stick.getRawAxis(2)) < 0.1)
 			notMoving = true;	
 		else
 			notMoving = false;
@@ -160,9 +165,9 @@ public class Swerve {
 	}
 	
 	void swerve(){
-		turn[0].set(calculateDirectionSpeed(encodValues[0],calculateSwerveDirection(2),2));
-		turn[1].set(calculateDirectionSpeed(encodValues[1],calculateSwerveDirection(3),3));
-		turn[2].set(calculateDirectionSpeed(encodValues[2],calculateSwerveDirection(1),1));
+		turn[0].set(calculateDirectionSpeed(encodValues[0],calculateSwerveDirection(1),1));
+		turn[1].set(calculateDirectionSpeed(encodValues[1],calculateSwerveDirection(2),2));
+		turn[2].set(calculateDirectionSpeed(encodValues[2],calculateSwerveDirection(3),3));
 		turn[3].set(calculateDirectionSpeed(encodValues[3],calculateSwerveDirection(4),4));
 
 		drive[0].set(calculateSwerveSpeed(2));
@@ -173,7 +178,7 @@ public class Swerve {
 	
 	void updateSmartDashboard(){
 		for(int i = 0; i<4; i++){
-			SmartDashboard.putNumber("Encoder " + i, turn[i].getAnalogInRaw());
+			SmartDashboard.putNumber("Encoder " + i, turn[i].getEncPosition());
 		}
 		SmartDashboard.putNumber("NavX", ahrs1.getAngle());
 	}

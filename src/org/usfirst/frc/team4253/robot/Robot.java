@@ -31,7 +31,10 @@ public class Robot extends SampleRobot {
     public void operatorControl() {
     	swerve.resetEncoders();
         while (isOperatorControl() && isEnabled()) {
-        	if(stick.getRawButton(2)) ahrs.reset();
+        	if(stick.getRawButton(12)) {
+        		ahrs.reset();
+        		swerve.resetEncoders();
+        	}
         	swerve.swerveControl();
             Timer.delay(0.005);		// wait for a motor update time
         }
